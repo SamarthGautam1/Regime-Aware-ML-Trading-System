@@ -1,0 +1,15 @@
+# API Credentials
+API_KEY = "PKEG3XSO73BBWAMJKOIXKSVCME"
+SECRET_KEY = "41nds77hsCQ5BLMQZwhmdDGzmvpjh6yVJRjBQTConitZ"
+
+# Trading Parameters
+SYMBOLS = ["AAPL", "MSFT", "NVDA", "SPY", "QQQ"]
+LOOKBACK_DAYS = 1500
+
+SHORT_EMA = 10
+LONG_EMA = 20
+
+TRANSACTION_COST = 0.001  # 0.1%
+
+# Evaluation Parameters
+TRADING_DAYS_PER_YEAR = 252
