@@ -12,7 +12,8 @@ from config import (
     TRANSACTION_COST,
 )
 
-for symbol in SYMBOLS:
+
+def run_symbol(symbol: str):
     print(f"\n==============================")
     print(f"SYMBOL: {symbol}")
     print(f"==============================")
@@ -23,37 +24,37 @@ for symbol in SYMBOLS:
     train_df = df.iloc[:split_index].copy()
     test_df = df.iloc[split_index:].copy()
 
+    # Train
     train_df = apply_ema_strategy(train_df, SHORT_EMA, LONG_EMA)
     train_positions = generate_positions(train_df)
     train_backtest = run_backtest(train_df, train_positions, TRANSACTION_COST)
+
     train_df["returns"] = train_backtest["market_returns"]
     train_df["strategy_returns"] = train_backtest["strategy_returns"]
-
-    test_df = apply_ema_strategy(test_df, SHORT_EMA, LONG_EMA)
-    test_positions = generate_positions(test_df)
-    test_backtest = run_backtest(test_df, test_positions, TRANSACTION_COST)
-    test_df["returns"] = test_backtest["market_returns"]
-    test_df["strategy_returns"] = test_backtest["strategy_returns"]
 
     print("=== TRAIN PERFORMANCE ===")
     train_perf = evaluate_performance(train_df)
     for k, v in train_perf.items():
         print(f"{k}: {v:.4f}")
 
+    # Test
+    test_df = apply_ema_strategy(test_df, SHORT_EMA, LONG_EMA)
+    test_positions = generate_positions(test_df)
+    test_backtest = run_backtest(test_df, test_positions, TRANSACTION_COST)
+
+    test_df["returns"] = test_backtest["market_returns"]
+    test_df["strategy_returns"] = test_backtest["strategy_returns"]
+
     print("\n=== TEST PERFORMANCE ===")
     test_perf = evaluate_performance(test_df)
     for k, v in test_perf.items():
         print(f"{k}: {v:.4f}")
 
-    print("\n--- TEST: TRENDING REGIME ONLY ---")
-    trending_test = test_df[test_df["regime"] == 1]
 
-    if len(trending_test) > 0:
-        trending_perf = evaluate_performance(trending_test)
-        for k, v in trending_perf.items():
-            print(f"{k}: {v:.4f}")
-    else:
-        print("No trending periods detected in test.")
+def main():
+    for symbol in SYMBOLS:
+        run_symbol(symbol)
 
-    print("Trending ratio:", (test_df["regime"] == 1).mean())
-    print("Trending count:", len(trending_test))
+
+if __name__ == "__main__":
+    main()
