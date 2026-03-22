@@ -3,6 +3,7 @@ from strategy.ema_strategy import apply_ema_strategy, generate_positions
 from features.feature_engineering import make_features, add_target, get_feature_columns
 from models.train_model import train_model
 from models.predict import predict_proba
+from models.save_load import save_model
 from strategy.ml_strategy import generate_ml_positions
 from backtesting.backtest import run_backtest
 from backtesting.performance import evaluate_performance
@@ -94,6 +95,7 @@ def run_symbol(symbol: str):
     # STEP 5: Train model on this symbol's training data only.
     # ------------------------------------------------------------------
     model = train_model(X_train, y_train)
+    save_model(model, symbol)
 
     # ------------------------------------------------------------------
     # STEP 6: Generate probability predictions on test data.
