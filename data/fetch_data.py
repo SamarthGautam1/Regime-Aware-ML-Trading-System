@@ -1,3 +1,4 @@
+import pandas as pd
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
@@ -15,5 +16,7 @@ def fetch_data(api_key, secret_key, symbol, days=30):
     bars = client.get_stock_bars(request)
     df = bars.df.reset_index()
     df = df[df['symbol'] == symbol]
+    df = df.set_index('timestamp')
+    df.index = pd.to_datetime(df.index)
 
     return df

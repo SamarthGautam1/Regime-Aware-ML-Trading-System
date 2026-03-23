@@ -1,3 +1,4 @@
+from utils.helper import plot_results
 from data.fetch_data import fetch_data
 from strategy.ema_strategy import apply_ema_strategy, generate_positions
 from features.feature_engineering import make_features, add_target, get_feature_columns
@@ -5,6 +6,7 @@ from models.train_model import train_model
 from models.predict import predict_proba
 from models.save_load import save_model
 from strategy.ml_strategy import generate_ml_positions
+from strategy.mean_reversion import apply_mean_reversion_strategy, generate_mr_positions
 from backtesting.backtest import run_backtest
 from backtesting.performance import evaluate_performance
 from config import (
@@ -20,6 +22,8 @@ from config import (
     ML_SLOPE_THRESHOLD,
     ML_R2_THRESHOLD,
     ML_PROB_THRESHOLD,
+    MR_WINDOW,
+    MR_NUM_STD,
 )
 
 
@@ -57,6 +61,10 @@ def run_symbol(symbol: str):
         slope_threshold=EMA_SLOPE_THRESHOLD,
         r2_threshold=EMA_R2_THRESHOLD,
     )
+
+    # Apply Bollinger Bands to df_ema before the split so the test slice
+    # has full rolling history and no warm-up NaNs at its start.
+    df_ema = apply_mean_reversion_strategy(df_ema, window=MR_WINDOW, num_std=MR_NUM_STD)
 
     df_ml = apply_ema_strategy(
         df.copy(),
@@ -130,6 +138,9 @@ def run_symbol(symbol: str):
         use_regime_filter=True,
     )
 
+    # Strategy 5: Mean Reversion (regime == 0 periods, strict EMA thresholds)
+    mr_positions = generate_mr_positions(test_ema)
+
     # ------------------------------------------------------------------
     # STEP 8: Backtests
     # ------------------------------------------------------------------
@@ -137,6 +148,7 @@ def run_symbol(symbol: str):
     ema_bt       = run_backtest(test_ml, ema_positions,       TRANSACTION_COST)
     ml_bt        = run_backtest(test_ml, ml_positions,        TRANSACTION_COST)
     ml_regime_bt = run_backtest(test_ml, ml_regime_positions, TRANSACTION_COST)
+    mr_bt        = run_backtest(test_ml, mr_positions,        TRANSACTION_COST)
 
     # ------------------------------------------------------------------
     # STEP 9: Evaluate and print 4-strategy comparison.
@@ -152,6 +164,15 @@ def run_symbol(symbol: str):
     print_performance("EMA Strategy",       evaluate(ema_bt))
     print_performance("ML Only",            evaluate(ml_bt))
     print_performance("ML + Regime Filter", evaluate(ml_regime_bt))
+    print_performance("Mean Reversion",     evaluate(mr_bt))
+
+    plot_results(symbol, test_ml, {
+        "Buy & Hold":     bh_bt,
+        "EMA Strategy":   ema_bt,
+        "ML Only":        ml_bt,
+        "ML + Regime":    ml_regime_bt,
+        "Mean Reversion": mr_bt,
+    })
 
 
 def main():

@@ -38,3 +38,10 @@ ML_PROB_THRESHOLD = 0.55  # Lowered from 0.6 — gives model more room to trade
 
 # Evaluation Parameters
 TRADING_DAYS_PER_YEAR = 252
+
+# Mean Reversion Strategy
+MR_WINDOW  = 20   # Bollinger Band rolling window
+MR_NUM_STD = 2.0  # Number of standard deviations for band width
+
+# Paper Trading
+PAPER_TRADE_SIZE = 2000  # Fixed dollar allocation per position (USD)

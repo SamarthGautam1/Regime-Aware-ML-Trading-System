@@ -20,6 +20,7 @@ from config import (
     ML_SLOPE_THRESHOLD,
     ML_R2_THRESHOLD,
     ML_PROB_THRESHOLD,
+    PAPER_TRADE_SIZE,
 )
 
 load_dotenv()
@@ -88,10 +89,10 @@ def is_market_open(client: TradingClient) -> bool:
     return clock.is_open
 
 
-def get_portfolio_equity(client: TradingClient) -> tuple[float, float]:
-    """Return (equity, buying_power) from the live account."""
+def get_portfolio_equity(client: TradingClient) -> float:
+    """Return total portfolio equity from the live account."""
     account = client.get_account()
-    return float(account.equity), float(account.buying_power)
+    return float(account.equity)
 
 
 def get_current_qty(client: TradingClient, symbol: str) -> float:
@@ -133,17 +134,9 @@ def get_latest_price(symbol: str) -> float:
     return float(quote[symbol].ask_price)
 
 
-def compute_target_qty(buying_power: float, price: float, n_symbols: int) -> int:
-    """
-    Equal-weight allocation: divide buying_power evenly across all symbols,
-    then floor to whole shares.
-
-    Uses buying_power (cash available to spend) rather than total equity so
-    we never attempt to allocate funds that are already committed to open
-    positions and are not actually spendable.
-    """
-    allocation = buying_power / n_symbols
-    qty = math.floor(allocation / price)
+def compute_target_qty(price: float) -> int:
+    """Floor PAPER_TRADE_SIZE / price to whole shares."""
+    qty = math.floor(PAPER_TRADE_SIZE / price)
     return max(qty, 0)
 
 
@@ -151,11 +144,7 @@ def compute_target_qty(buying_power: float, price: float, n_symbols: int) -> int
 # Per-symbol execution
 # ---------------------------------------------------------------------------
 
-def execute_symbol(
-    client: TradingClient,
-    symbol: str,
-    buying_power: float,
-) -> None:
+def execute_symbol(client: TradingClient, symbol: str) -> None:
     log(symbol, "--- processing ---")
 
     # --- signal ---
@@ -181,9 +170,9 @@ def execute_symbol(
     if signal == 1 and not has_position:
         try:
             price      = get_latest_price(symbol)
-            target_qty = compute_target_qty(buying_power, price, len(SYMBOLS))
+            target_qty = compute_target_qty(price)
             if target_qty == 0:
-                log(symbol, "SKIP buy — target qty is 0 (insufficient buying power)")
+                log(symbol, f"SKIP buy — target qty is 0 (PAPER_TRADE_SIZE={PAPER_TRADE_SIZE} < price {price:.2f})")
                 return
             order = MarketOrderRequest(
                 symbol=symbol,
@@ -192,11 +181,7 @@ def execute_symbol(
                 time_in_force=TimeInForce.DAY,
             )
             client.submit_order(order)
-            log(
-                symbol,
-                f"BUY {target_qty} shares @ ~{price:.2f}"
-                f"  (buying_power={buying_power:.2f}, n={len(SYMBOLS)})",
-            )
+            log(symbol, f"BUY {target_qty} shares @ ~{price:.2f}  (allocation=${PAPER_TRADE_SIZE})")
         except Exception as e:
             log(symbol, f"ERROR placing buy order — {e}")
 
@@ -234,14 +219,14 @@ def main() -> None:
         return
 
     try:
-        equity, buying_power = get_portfolio_equity(client)
-        log("SYSTEM", f"equity={equity:.2f}  buying_power={buying_power:.2f}")
+        equity = get_portfolio_equity(client)
+        log("SYSTEM", f"equity={equity:.2f}")
     except Exception as e:
         log("SYSTEM", f"FATAL — could not fetch account info: {e}")
         return
 
     for symbol in SYMBOLS:
-        execute_symbol(client, symbol, buying_power)
+        execute_symbol(client, symbol)
 
     log("SYSTEM", "=== run complete ===")
 
