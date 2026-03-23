@@ -209,13 +209,6 @@ with st.sidebar:
 
     run_clicked = st.button("Run Analysis", type="primary", use_container_width=True)
 
-    st.divider()
-    st.caption(
-        "Phase 1 (ML Layer) — ✅ COMPLETE\n"
-        "Phase 2 (Paper Trading) — 🔄 IN PROGRESS\n"
-        "Phase 3 (Robustness) — TODO"
-    )
-
 # ── Title and config guard ────────────────────────────────────────────────────
 st.title("Regime-Aware ML Trading System")
 
