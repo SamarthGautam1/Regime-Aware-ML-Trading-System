@@ -9,6 +9,7 @@ from strategy.ml_strategy import generate_ml_positions
 from strategy.mean_reversion import apply_mean_reversion_strategy, generate_mr_positions
 from backtesting.backtest import run_backtest
 from backtesting.performance import evaluate_performance
+from backtesting.walk_forward import walk_forward_validation, print_walk_forward_results
 from config import (
     API_KEY,
     SECRET_KEY,
@@ -173,6 +174,12 @@ def run_symbol(symbol: str):
         "ML + Regime":    ml_regime_bt,
         "Mean Reversion": mr_bt,
     })
+
+    # ------------------------------------------------------------------
+    # STEP 10: Walk-forward validation on the full ML dataframe.
+    # ------------------------------------------------------------------
+    wf_results = walk_forward_validation(df_ml, feature_cols)
+    print_walk_forward_results(wf_results)
 
 
 def main():
