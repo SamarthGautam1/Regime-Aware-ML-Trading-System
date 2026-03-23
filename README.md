@@ -22,8 +22,7 @@ What separates this from a standard backtest project is the full vertical slice 
 ## Architecture
 
 ![Architecture](docs/architecture.png)
-
-> Generate or regenerate this diagram: `python scripts/generate_diagram.py`
+`
 
 | Module | Responsibility |
 |---|---|
