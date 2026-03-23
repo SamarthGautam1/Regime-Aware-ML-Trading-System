@@ -3,6 +3,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
+from utils.helper import setup_logger
+
+logger = setup_logger()
+
 
 def train_model(X_train: pd.DataFrame, y_train: pd.Series) -> Pipeline:
     """
@@ -50,6 +54,6 @@ def train_model(X_train: pd.DataFrame, y_train: pd.Series) -> Pipeline:
     #   2. Scales X_train and fits logistic regression on the scaled data
     pipeline.fit(X_train, y_train)
 
-    print(f"Model trained on {len(X_train)} samples, {X_train.shape[1]} features.")
+    logger.info("Model trained on %d samples, %d features.", len(X_train), X_train.shape[1])
 
     return pipeline

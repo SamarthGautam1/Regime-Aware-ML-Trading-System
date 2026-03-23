@@ -1,4 +1,6 @@
-from utils.helper import plot_results
+from utils.helper import plot_results, setup_logger
+
+logger = setup_logger()
 from data.fetch_data import fetch_data
 from strategy.ema_strategy import apply_ema_strategy, generate_positions
 from features.feature_engineering import make_features, add_target, get_feature_columns
@@ -29,15 +31,15 @@ from config import (
 
 
 def print_performance(label: str, perf: dict):
-    print(f"\n  [{label}]")
+    logger.info("  [%s]", label)
     for k, v in perf.items():
-        print(f"    {k:<30} {v:.4f}")
+        logger.info("    %-30s %.4f", k, v)
 
 
 def run_symbol(symbol: str):
-    print(f"\n{'=' * 50}")
-    print(f"  SYMBOL: {symbol}")
-    print(f"{'=' * 50}")
+    logger.info("=" * 50)
+    logger.info("  SYMBOL: %s", symbol)
+    logger.info("=" * 50)
 
     # ------------------------------------------------------------------
     # STEP 1: Fetch data
@@ -160,7 +162,7 @@ def run_symbol(symbol: str):
         eval_df["strategy_returns"] = bt_result["strategy_returns"]
         return evaluate_performance(eval_df)
 
-    print("\n--- TEST PERIOD PERFORMANCE ---")
+    logger.info("--- TEST PERIOD PERFORMANCE ---")
     print_performance("Buy & Hold",         evaluate(bh_bt))
     print_performance("EMA Strategy",       evaluate(ema_bt))
     print_performance("ML Only",            evaluate(ml_bt))

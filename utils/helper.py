@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -5,6 +6,45 @@ import matplotlib.dates as mdates
 import pandas as pd
 
 ARTIFACTS_DIR = "artifacts"
+LOGS_DIR = "logs"
+
+
+def setup_logger() -> logging.Logger:
+    """
+    Create and return the 'trading_system' logger.
+
+    Handlers are added only once (idempotent). Calling this from any module
+    always returns the same configured logger instance.
+
+    Console handler : INFO and above
+    File handler    : DEBUG and above  →  logs/trading.log
+    Format          : [TIMESTAMP] [LEVEL] [MODULE] message
+    """
+    logger = logging.getLogger("trading_system")
+
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.DEBUG)
+
+    fmt = logging.Formatter(
+        "[%(asctime)s] [%(levelname)-8s] [%(module)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(fmt)
+
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    file_handler = logging.FileHandler(os.path.join(LOGS_DIR, "trading.log"))
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(fmt)
+
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+
+    return logger
 
 STRATEGY_COLORS = {
     "Buy & Hold":     "#888888",
@@ -74,7 +114,7 @@ def plot_results(symbol: str, test_df: pd.DataFrame, backtest_results: dict) -> 
 
     out_path = os.path.join(ARTIFACTS_DIR, f"{symbol}_performance.png")
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    print(f"Chart saved: {out_path}")
+    setup_logger().info("Chart saved: %s", out_path)
 
     plt.show()
     plt.close(fig)

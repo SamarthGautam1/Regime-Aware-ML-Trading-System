@@ -2,14 +2,18 @@ import os
 import joblib
 from sklearn.pipeline import Pipeline
 
+from utils.helper import setup_logger
+
 ARTIFACTS_DIR = "artifacts"
+
+logger = setup_logger()
 
 
 def save_model(model: Pipeline, symbol: str) -> None:
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
     path = os.path.join(ARTIFACTS_DIR, f"{symbol}_model.pkl")
     joblib.dump(model, path)
-    print(f"Model saved: {path}")
+    logger.info("Model saved: %s", path)
 
 
 def load_model(symbol: str) -> Pipeline:

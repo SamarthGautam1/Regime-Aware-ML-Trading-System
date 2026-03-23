@@ -1,6 +1,5 @@
 import os
 import math
-from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from alpaca.trading.client import TradingClient
@@ -8,7 +7,10 @@ from alpaca.trading.requests import MarketOrderRequest, GetOrdersRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, QueryOrderStatus
 from alpaca.common.exceptions import APIError
 
+from utils.helper import setup_logger
 from data.fetch_data import fetch_data
+
+logger = setup_logger()
 from strategy.ema_strategy import apply_ema_strategy
 from features.feature_engineering import make_features, get_feature_columns
 from models.save_load import load_model
@@ -30,15 +32,6 @@ PAPER_SECRET = os.getenv("ALPACA_PAPER_SECRET")
 
 if not PAPER_KEY or not PAPER_SECRET:
     raise ValueError("ALPACA_PAPER_KEY and ALPACA_PAPER_SECRET must be set in .env")
-
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-def log(symbol: str, message: str) -> None:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    print(f"[{ts}] [{symbol}] {message}")
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +68,7 @@ def get_signal(symbol: str) -> int:
 
     signal = 1 if (pred_proba > ML_PROB_THRESHOLD and regime == 1) else 0
 
-    log(symbol, f"pred_proba={pred_proba:.4f}  regime={regime}  signal={signal}")
+    logger.info("[%s] pred_proba=%.4f  regime=%d  signal=%d", symbol, pred_proba, regime, signal)
     return signal
 
 
@@ -145,16 +138,16 @@ def compute_target_qty(price: float) -> int:
 # ---------------------------------------------------------------------------
 
 def execute_symbol(client: TradingClient, symbol: str) -> None:
-    log(symbol, "--- processing ---")
+    logger.info("[%s] --- processing ---", symbol)
 
     # --- signal ---
     try:
         signal = get_signal(symbol)
     except FileNotFoundError:
-        log(symbol, "SKIP — no saved model found. Run main.py to train and save models first.")
+        logger.warning("[%s] SKIP — no saved model found. Run main.py to train and save models first.", symbol)
         return
     except Exception as e:
-        log(symbol, f"ERROR generating signal — {e}")
+        logger.error("[%s] ERROR generating signal — %s", symbol, e)
         return
 
     # --- current state ---
@@ -163,7 +156,7 @@ def execute_symbol(client: TradingClient, symbol: str) -> None:
 
     # --- duplicate-order guard ---
     if has_pending_order(client, symbol):
-        log(symbol, f"SKIP — open order already exists for {symbol}, will not submit another")
+        logger.info("[%s] SKIP — open order already exists, will not submit another", symbol)
         return
 
     # --- act ---
@@ -172,7 +165,7 @@ def execute_symbol(client: TradingClient, symbol: str) -> None:
             price      = get_latest_price(symbol)
             target_qty = compute_target_qty(price)
             if target_qty == 0:
-                log(symbol, f"SKIP buy — target qty is 0 (PAPER_TRADE_SIZE={PAPER_TRADE_SIZE} < price {price:.2f})")
+                logger.warning("[%s] SKIP buy — target qty is 0 (PAPER_TRADE_SIZE=%s < price %.2f)", symbol, PAPER_TRADE_SIZE, price)
                 return
             order = MarketOrderRequest(
                 symbol=symbol,
@@ -181,9 +174,9 @@ def execute_symbol(client: TradingClient, symbol: str) -> None:
                 time_in_force=TimeInForce.DAY,
             )
             client.submit_order(order)
-            log(symbol, f"BUY {target_qty} shares @ ~{price:.2f}  (allocation=${PAPER_TRADE_SIZE})")
+            logger.info("[%s] BUY %d shares @ ~%.2f  (allocation=$%s)", symbol, target_qty, price, PAPER_TRADE_SIZE)
         except Exception as e:
-            log(symbol, f"ERROR placing buy order — {e}")
+            logger.error("[%s] ERROR placing buy order — %s", symbol, e)
 
     elif signal == 0 and has_position:
         try:
@@ -194,13 +187,13 @@ def execute_symbol(client: TradingClient, symbol: str) -> None:
                 time_in_force=TimeInForce.DAY,
             )
             client.submit_order(order)
-            log(symbol, f"SELL {current_qty} shares (closing position)")
+            logger.info("[%s] SELL %.4g shares (closing position)", symbol, current_qty)
         except Exception as e:
-            log(symbol, f"ERROR placing sell order — {e}")
+            logger.error("[%s] ERROR placing sell order — %s", symbol, e)
 
     else:
         state = "long" if has_position else "flat"
-        log(symbol, f"no action needed — signal={signal}  current_state={state}")
+        logger.info("[%s] no action needed — signal=%d  current_state=%s", symbol, signal, state)
 
 
 # ---------------------------------------------------------------------------
@@ -208,27 +201,27 @@ def execute_symbol(client: TradingClient, symbol: str) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    log("SYSTEM", "=== paper trading run started ===")
+    logger.info("[SYSTEM] === paper trading run started ===")
 
     client = TradingClient(PAPER_KEY, PAPER_SECRET, paper=True)
 
     # Fix 2: abort immediately if market is closed — DAY orders would be rejected
     if not is_market_open(client):
         clock = client.get_clock()
-        log("SYSTEM", f"market is closed. Next open: {clock.next_open}. Exiting.")
+        logger.info("[SYSTEM] market is closed. Next open: %s. Exiting.", clock.next_open)
         return
 
     try:
         equity = get_portfolio_equity(client)
-        log("SYSTEM", f"equity={equity:.2f}")
+        logger.info("[SYSTEM] equity=%.2f", equity)
     except Exception as e:
-        log("SYSTEM", f"FATAL — could not fetch account info: {e}")
+        logger.error("[SYSTEM] FATAL — could not fetch account info: %s", e)
         return
 
     for symbol in SYMBOLS:
         execute_symbol(client, symbol)
 
-    log("SYSTEM", "=== run complete ===")
+    logger.info("[SYSTEM] === run complete ===")
 
 
 if __name__ == "__main__":
