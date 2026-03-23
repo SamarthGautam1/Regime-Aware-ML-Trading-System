@@ -22,7 +22,6 @@ What separates this from a standard backtest project is the full vertical slice 
 ## Architecture
 
 ![Architecture](docs/architecture.png)
-`
 
 | Module | Responsibility |
 |---|---|
